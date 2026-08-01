@@ -44,11 +44,11 @@ const registerUser = asyncHandler(async (req, res) => {
 
     const user = await User.create({
         fullName: normalizedFullName,
-        avatar: uploadedAvatar.url,
-        coverImage: coverImageUploadResult?.url || "",
         username: normalizedUsername,
         email: normalizedEmail,
-        password
+        password,
+        avatar: uploadedAvatar.secure_url,
+        coverImage: coverImageUploadResult?.secure_url || "",
     });
 
     const createdUser = await User.findById(user._id).select("-password -refreshToken");
