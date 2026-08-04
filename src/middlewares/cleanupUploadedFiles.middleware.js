@@ -4,10 +4,15 @@ const cleanupUploadedFiles = (req, res, next) => {
     let cleaned = false;
 
     const cleanup = () => {
-        if (!req.files || cleaned) return;
+        if (cleaned) return;
         cleaned = true;
 
-        Object.values(req.files).flat().forEach(file => {
+        const files = [
+            ...(req.file ? [req.file] : []),
+            ...Object.values(req.files || {}).flat()
+        ];
+
+        files.forEach((file) => {
             if (file?.path && fs.existsSync(file.path)) {
                 fs.unlinkSync(file.path);
             }
