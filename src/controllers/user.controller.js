@@ -290,4 +290,73 @@ const updateCoverImage = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, user, "Cover image updated successfully"));
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, getCurrentUser, updateAccountDetails, changeCurrentPassword, updateAvatar, updateCoverImage };
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+
+    if (!username?.trim()) {
+        throw new ApiError(400, "Username is required");
+    }
+
+    const normalizedUsername = username.trim().toLowerCase();
+
+    const [channelProfile] = await User.aggregate([
+        {
+            $match: {
+                username: normalizedUsername
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields: {
+                subscriberCount: {
+                    $size: "$subscribers"
+                },
+                subscribedChannelsCount: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                fullName: 1,
+                username: 1,
+                subscriberCount: 1,
+                subscribedChannelsCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1
+            }
+        }
+    ]);
+
+    if (!channelProfile) {
+        throw new ApiError(404, "Channel not found");
+    }
+
+    return res.status(200)
+        .json(new ApiResponse(200, channelProfile, "Channel profile retrieved successfully"));
+});
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken, getCurrentUser, updateAccountDetails, changeCurrentPassword, updateAvatar, updateCoverImage, getUserChannelProfile };
