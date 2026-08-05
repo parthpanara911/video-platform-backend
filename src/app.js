@@ -1,7 +1,9 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
+import channelRouter from "./routes/channel.routes.js";
 
 const app = express();
 
@@ -15,6 +17,8 @@ app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
-app.use('/api/v1/auth', userRouter);
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/users", userRouter);
+app.use("/api/v1/channels", channelRouter);
 
 export default app;
