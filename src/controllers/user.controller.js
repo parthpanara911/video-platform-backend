@@ -20,28 +20,53 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     const normalizedFullName = fullName.trim();
     const normalizedEmail = email.trim().toLowerCase();
 
-    const existingUser = await User.findOne({
-        email: normalizedEmail,
-        _id: { $ne: req.user._id }
-    }).lean();
+    const currentUser = await User.findById(req.user?._id)
+        .select("fullName email");
 
-    if (existingUser) {
-        throw new ApiError(409, "Email is already in use");
+    if (!currentUser) {
+        throw new ApiError(404, "User not found");
     }
 
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set: {
-                fullName: normalizedFullName,
-                email: normalizedEmail
-            }
-        },
-        { new: true }
-    ).select("-password -refreshToken").lean();
+    if (normalizedEmail !== currentUser.email) {
+        const existingUser = await User.exists({
+            email: normalizedEmail,
+            _id: { $ne: currentUser._id }
+        });
 
-    return res.status(200)
-        .json(new ApiResponse(200, user, "Account details updated successfully"));
+        if (existingUser) {
+            throw new ApiError(409, "Email address is already in use");
+        }
+    }
+
+    try {
+        const updatedUser = await User.findByIdAndUpdate(
+            currentUser._id,
+            {
+                $set: {
+                    fullName: normalizedFullName,
+                    email: normalizedEmail
+                }
+            },
+            {
+                returnDocument: 'after',
+                runValidators: true
+            }
+        )
+            .select("-password -refreshToken")
+            .lean();
+
+        if (!updatedUser) {
+            throw new ApiError(404, "User not found");
+        }
+
+        return res.status(200)
+            .json(new ApiResponse(200, updatedUser, "Account details updated successfully"));
+    } catch (error) {
+        if (error?.code === 11000) {
+            throw new ApiError(409, "Email address is already in use");
+        }
+        throw error;
+    }
 });
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
