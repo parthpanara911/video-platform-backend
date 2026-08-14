@@ -1,8 +1,9 @@
 import { User } from "../models/user.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
-import uploadOnCloudinary from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
+import mongoose from "mongoose";
 
 const getCurrentUser = asyncHandler(async (req, res) => {
     return res.status(200)
@@ -37,7 +38,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
             }
         },
         { new: true }
-    ).select("-password").lean();
+    ).select("-password -refreshToken").lean();
 
     return res.status(200)
         .json(new ApiResponse(200, user, "Account details updated successfully"));
@@ -77,22 +78,37 @@ const updateAvatar = asyncHandler(async (req, res) => {
 
     const uploadedAvatar = await uploadOnCloudinary(avatarLocalPath);
 
-    if (!uploadedAvatar?.secure_url) {
+    if (!uploadedAvatar?.secure_url || !uploadedAvatar?.public_id) {
         throw new ApiError(400, "Failed to upload the avatar image");
     }
 
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set: {
-                avatar: uploadedAvatar.secure_url
-            }
-        },
-        { new: true }
-    ).select("-password").lean();
+    const user = await User.findById(req.user?._id);
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    const oldAvatarPublicId = user.avatarPublicId;
+
+    user.avatar = uploadedAvatar.secure_url;
+    user.avatarPublicId = uploadedAvatar.public_id;
+
+    await user.save({ validateBeforeSave: false });
+
+    if (oldAvatarPublicId) {
+        try {
+            await deleteFromCloudinary(oldAvatarPublicId);
+        } catch (error) {
+            console.error(`Failed to delete old avatar from Cloudinary: ${oldAvatarPublicId}`, error);
+        }
+    }
+
+    const updatedUser = await User.findById(user._id)
+        .select("-password -refreshToken")
+        .lean();
 
     return res.status(200)
-        .json(new ApiResponse(200, user, "Avatar image updated successfully"));
+        .json(new ApiResponse(200, updatedUser, "Avatar image updated successfully"));
 });
 
 const updateCoverImage = asyncHandler(async (req, res) => {
@@ -104,22 +120,37 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 
     const uploadedCoverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-    if (!uploadedCoverImage?.secure_url) {
-        throw new ApiError(400, "Failed to upload the cover image");
+    if (!uploadedCoverImage?.secure_url || !uploadedCoverImage?.public_id) {
+        throw new ApiError(500, "Failed to upload the cover image");
     }
 
-    const user = await User.findByIdAndUpdate(
-        req.user?.id,
-        {
-            $set: {
-                coverImage: uploadedCoverImage.secure_url
-            }
-        },
-        { new: true }
-    ).select("-password").lean();
+    const user = await User.findById(req.user?._id);
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    const oldCoverImagePublicId = user.coverImagePublicId;
+
+    user.coverImage = uploadedCoverImage.secure_url;
+    user.coverImagePublicId = uploadedCoverImage.public_id;
+
+    await user.save({ validateBeforeSave: false });
+
+    if (oldCoverImagePublicId) {
+        try {
+            await deleteFromCloudinary(oldCoverImagePublicId);
+        } catch (error) {
+            console.error(`Failed to delete old cover image from Cloudinary: ${oldCoverImagePublicId}`, error);
+        }
+    }
+
+    const updatedUser = await User.findById(user._id)
+        .select("-password -refreshToken")
+        .lean();
 
     return res.status(200)
-        .json(new ApiResponse(200, user, "Cover image updated successfully"));
+        .json(new ApiResponse(200, updatedUser, "Cover image updated successfully"));
 });
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
