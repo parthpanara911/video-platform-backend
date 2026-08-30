@@ -1,12 +1,14 @@
 import { Router } from "express";
-import { publishVideo } from "../controllers/video.controller.js";
+import { publishVideo, getAllVideos, getVideoById } from "../controllers/video.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import cleanupUploadedFiles from "../middlewares/cleanupUploadedFiles.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { optionalAuth } from "../middlewares/optionalAuth.middleware.js";
 
 const router = Router();
 
 router.route("/")
+    .get(optionalAuth, getAllVideos)
     .post(
         verifyJWT,
         upload.fields([
@@ -16,5 +18,8 @@ router.route("/")
         cleanupUploadedFiles,
         publishVideo
     );
+
+router.route("/:videoId")
+    .get(optionalAuth, getVideoById);
 
 export default router;
