@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import ApiError from "./ApiError.js";
 
 const ALLOWED_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const ALLOWED_VIDEO_MIME = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+const ALLOWED_VIDEO_MIME = new Set(["video/mp4", "video/webm", "video/quicktime", "video/mp2t"]);
 
 export const validateImageFile = async (filePath, fieldName = "Thumbnail") => {
     const detected = await fileTypeFromFile(filePath);
