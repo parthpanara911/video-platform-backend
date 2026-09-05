@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import httpLogger from "./utils/httpLogger.js";
 import healthRouter from "./routes/health.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
@@ -8,6 +9,8 @@ import channelRouter from "./routes/channel.routes.js";
 import videoRouter from "./routes/video.routes.js";
 
 const app = express();
+
+app.use(httpLogger);
 
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
