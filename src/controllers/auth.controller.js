@@ -2,6 +2,7 @@ import { User } from "../models/user.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { validateImageFile } from "../utils/validateFile.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { cookieOptions } from "../utils/cookies.js";
 import jwt from "jsonwebtoken";
@@ -54,6 +55,12 @@ const registerUser = asyncHandler(async (req, res) => {
 
     if (!avatarLocalPath) {
         throw new ApiError(400, "Please upload an avatar image");
+    }
+
+    await validateImageFile(avatarLocalPath, "Avatar");
+
+    if (coverImageLocalPath) {
+        await validateImageFile(coverImageLocalPath, "Cover image");
     }
 
     const uploadedAvatar = await uploadOnCloudinary(avatarLocalPath);

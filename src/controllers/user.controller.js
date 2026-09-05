@@ -2,6 +2,7 @@ import { User } from "../models/user.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+import { validateImageFile } from "../utils/validateFile.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import mongoose from "mongoose";
 
@@ -96,19 +97,18 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
 const updateAvatar = asyncHandler(async (req, res) => {
     const avatarLocalPath = req.file?.path;
-
     if (!avatarLocalPath) {
         throw new ApiError(400, "Please upload an avatar image");
     }
 
-    const uploadedAvatar = await uploadOnCloudinary(avatarLocalPath);
+    await validateImageFile(avatarLocalPath, "Avatar");
 
+    const uploadedAvatar = await uploadOnCloudinary(avatarLocalPath);
     if (!uploadedAvatar?.secure_url || !uploadedAvatar?.public_id) {
         throw new ApiError(400, "Failed to upload the avatar image");
     }
 
     const user = await User.findById(req.user?._id);
-
     if (!user) {
         throw new ApiError(404, "User not found");
     }
@@ -138,19 +138,18 @@ const updateAvatar = asyncHandler(async (req, res) => {
 
 const updateCoverImage = asyncHandler(async (req, res) => {
     const coverImageLocalPath = req.file?.path;
-
     if (!coverImageLocalPath) {
         throw new ApiError(400, "Please upload a cover image");
     }
 
-    const uploadedCoverImage = await uploadOnCloudinary(coverImageLocalPath);
+    await validateImageFile(coverImageLocalPath, "Cover image");
 
+    const uploadedCoverImage = await uploadOnCloudinary(coverImageLocalPath);
     if (!uploadedCoverImage?.secure_url || !uploadedCoverImage?.public_id) {
         throw new ApiError(500, "Failed to upload the cover image");
     }
 
     const user = await User.findById(req.user?._id);
-
     if (!user) {
         throw new ApiError(404, "User not found");
     }

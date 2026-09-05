@@ -19,3 +19,8 @@ export const uploadThumbnailOnly = multer({
     storage,
     limits: { fileSize: 5 * 1024 * 1024 },
 });
+
+export const uploadUserImages = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+});
