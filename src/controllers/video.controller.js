@@ -5,7 +5,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { buildSignedUploadParams } from "../utils/cloudinarySignature.js";
-import { deleteFromCloudinary } from "../utils/cloudinary.js";
+import { deleteFromCloudinary } from "../utils/cloudinaryService.js";
 import { validateImageFile } from "../utils/validateFile.js";
 
 const MAX_CONCURRENT_UPLOADS_PER_USER = 3;
