@@ -2,12 +2,13 @@ import { Router } from "express";
 import { initiateVideoUpload, getVideoStatus, getAllVideos, getVideoById, updateVideoDetails, deleteVideo, togglePublishStatus } from "../controllers/video.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { optionalAuth } from "../middlewares/optionalAuth.middleware.js";
+import { uploadInitiateLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 const router = Router();
 
 router.route("/")
     .get(optionalAuth, getAllVideos)
-    .post(verifyJWT, initiateVideoUpload);
+    .post(verifyJWT, uploadInitiateLimiter, initiateVideoUpload);
 
 router.route("/:videoId/status").get(verifyJWT, getVideoStatus);
 
