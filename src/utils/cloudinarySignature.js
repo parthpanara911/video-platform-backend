@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
+import "../config/cloudinary.js";
 import crypto from "crypto";
 
 export const buildSignedUploadParams = ({
