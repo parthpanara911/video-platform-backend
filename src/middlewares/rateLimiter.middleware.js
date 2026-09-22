@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { RedisStore } from "rate-limit-redis";
 import redisClient from "../config/redisClient.js";
 
@@ -22,21 +22,30 @@ const makeLimiter = ({ windowMs, max, keyGenerator, message }) =>
 export const registerLimiter = makeLimiter({
     windowMs: 60 * 60 * 1000,
     max: 5,
-    keyGenerator: (req) => req.ip,
+    keyGenerator: (req) => {
+        const ip = req.ip ?? req.socket?.remoteAddress;
+        return ip ? `ip:${ipKeyGenerator(ip)}` : "unknown";
+    },
     message: "Too many registration attempts. Try again later."
 });
 
 export const loginLimiter = makeLimiter({
     windowMs: 15 * 60 * 1000,
     max: 10,
-    keyGenerator: (req) => req.ip,
+    keyGenerator: (req) => {
+        const ip = req.ip ?? req.socket?.remoteAddress;
+        return ip ? `ip:${ipKeyGenerator(ip)}` : "unknown";
+    },
     message: "Too many login attempts. Try again later."
 });
 
 export const refreshLimiter = makeLimiter({
     windowMs: 15 * 60 * 1000,
     max: 20,
-    keyGenerator: (req) => req.ip,
+    keyGenerator: (req) => {
+        const ip = req.ip ?? req.socket?.remoteAddress;
+        return ip ? `ip:${ipKeyGenerator(ip)}` : "unknown";
+    },
     message: "Too many token refresh attempts."
 });
 
@@ -44,14 +53,14 @@ export const refreshLimiter = makeLimiter({
 export const passwordChangeLimiter = makeLimiter({
     windowMs: 15 * 60 * 1000,
     max: 5,
-    keyGenerator: (req) => req.user._id.toString(),
+    keyGenerator: (req) => `user:${req.user._id.toString()}`,
     message: "Too many password change attempts."
 });
 
 export const uploadInitiateLimiter = makeLimiter({
     windowMs: 10 * 60 * 1000,
     max: 5,
-    keyGenerator: (req) => req.user._id.toString(),
+    keyGenerator: (req) => `user:${req.user._id.toString()}`,
     message: "Too many upload attempts, please slow down."
 });
 
@@ -59,6 +68,12 @@ export const uploadInitiateLimiter = makeLimiter({
 export const generalApiLimiter = makeLimiter({
     windowMs: 60 * 1000,
     max: 100,
-    keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+    keyGenerator: (req) => {
+        const userId = req.user?._id?.toString();
+        if (userId) return `user:${userId}`;
+
+        const ip = req.ip ?? req.socket?.remoteAddress;
+        return ip ? `ip:${ipKeyGenerator(ip)}` : "unknown";
+    },
     message: "Too many requests. Please slow down."
 });
