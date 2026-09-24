@@ -5,21 +5,45 @@ import logger from "../utils/logger.js";
 const ALLOWED_VIDEO_FORMATS = new Set(["mp4", "webm", "mov"]);
 const ALLOWED_IMAGE_FORMATS = new Set(["jpg", "jpeg", "png", "webp"]);
 
-const parseContext = (context) => {
-    return context?.custom || {};
+const extractVideoId = (payload) => {
+    const contextVideoId = payload?.context?.custom?.videoId;
+    if (contextVideoId) return contextVideoId;
+
+    const publicId = payload?.public_id;
+    if (!publicId) return null;
+
+    const parts = publicId.split("/");
+
+    // videos/{ownerId}/{videoId}/source
+    if (parts.length >= 4 && parts[0] === "videos") {
+        return parts[2];
+    }
+
+    return null;
 };
 
 export const handleCloudinaryNotification = asyncHandler(async (req, res) => {
     const payload = req.cloudinaryPayload;
-    const { notification_type, public_id, resource_type, eager, format, secure_url, bytes, duration, context } = payload;
+    const { notification_type, public_id, resource_type, eager, format, secure_url, bytes, duration } = payload;
 
     res.status(200).json({ received: true });
 
-    const { videoId } = parseContext(context);
+    const videoId = extractVideoId(payload);
     if (!videoId) {
         logger.warn("Cloudinary webhook missing videoId in context", { public_id, notification_type });
         return;
     }
+
+    logger.info(
+        {
+            notification_type,
+            resource_type,
+            public_id,
+            videoId,
+            eagerCount: Array.isArray(eager) ? eager.length : 0,
+        },
+        "Cloudinary webhook received"
+    );
 
     const video = await Video.findById(videoId);
     if (!video) {

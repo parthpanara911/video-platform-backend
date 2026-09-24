@@ -10,7 +10,9 @@ export const buildSignedUploadParams = ({
     eager
 }) => {
     const timestamp = Math.floor(Date.now() / 1000);
-    const publicId = `videos/${ownerId}/${videoId}/${resourceType === "video" ? "source" : "thumbnail"}`;
+    const publicId = resourceType === "video" ? "source" : "thumbnail";
+
+    const notificationUrl = `${process.env.SERVER_URL}/api/v1/webhooks/cloudinary`;
 
     const paramsToSign = {
         timestamp,
@@ -18,8 +20,8 @@ export const buildSignedUploadParams = ({
         upload_preset: uploadPreset,
         folder: `videos/${ownerId}/${videoId}`,
         context: `videoId=${videoId}|ownerId=${ownerId}`,
-        notification_url: `${process.env.SERVER_URL}/api/v1/webhooks/cloudinary`,
-        ...(eager ? { eager, eager_async: true } : {}),
+        notification_url: notificationUrl,
+        ...(eager ? { eager, eager_async: true, eager_notification_url: notificationUrl } : {}),
     };
 
     const signature = cloudinary.utils.api_sign_request(
