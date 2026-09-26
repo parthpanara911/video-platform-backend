@@ -13,13 +13,29 @@ const extractVideoId = (payload) => {
     if (!publicId) return null;
 
     const parts = publicId.split("/");
-
-    // videos/{ownerId}/{videoId}/source
-    if (parts.length >= 4 && parts[0] === "videos") {
+    if (parts.length >= 4 && parts[0] === "videos")
         return parts[2];
-    }
 
     return null;
+};
+
+const extractFormat = (eagerResult, fallback) => {
+    if (eagerResult.format) return eagerResult.format;
+
+    const match = eagerResult.secure_url?.match(/\.([a-z0-9]+)$/i);
+    return match?.[1]?.toLowerCase() || fallback;
+};
+
+const promoteToReadyIfComplete = async (videoId) => {
+    await Video.findOneAndUpdate(
+        {
+            _id: videoId,
+            status: { $ne: "ready" },
+            "assets.video.url": { $exists: true },
+            "assets.thumbnail.url": { $exists: true },
+        },
+        { $set: { status: "ready", isPublished: true } }
+    );
 };
 
 export const handleCloudinaryNotification = asyncHandler(async (req, res) => {
@@ -30,68 +46,70 @@ export const handleCloudinaryNotification = asyncHandler(async (req, res) => {
 
     const videoId = extractVideoId(payload);
     if (!videoId) {
-        logger.warn("Cloudinary webhook missing videoId in context", { public_id, notification_type });
-        return;
-    }
-
-    logger.info(
-        {
-            notification_type,
-            resource_type,
-            public_id,
-            videoId,
-            eagerCount: Array.isArray(eager) ? eager.length : 0,
-        },
-        "Cloudinary webhook received"
-    );
-
-    const video = await Video.findById(videoId);
-    if (!video) {
-        logger.warn("Cloudinary webhook for unknown video", { videoId, public_id });
+        logger.warn("Cloudinary webhook: could not resolve videoId", { public_id, notification_type });
         return;
     }
 
     try {
-        if (resource_type === "video") {
-            if (notification_type === "eager" && Array.isArray(eager) && eager.length) {
-                const transcoded = eager[0];
-                const finalFormat = transcoded.format || format;
+        if (notification_type === "eager") {
+            if (!Array.isArray(eager) || !eager.length) {
+                logger.warn("Eager notification with missing eager array", { videoId, public_id });
+                return;
+            }
 
-                if (!ALLOWED_VIDEO_FORMATS.has(finalFormat)) {
-                    video.status = "failed";
-                    video.processingError = `Unsupported output format: ${finalFormat}`;
-                    await video.save();
+            const transcoded = eager[0];
+            const finalFormat = extractFormat(transcoded, format);
+
+            if (!ALLOWED_VIDEO_FORMATS.has(finalFormat)) {
+                await Video.findByIdAndUpdate(videoId, {
+                    $set: { status: "failed", processingError: `Unsupported output format: ${finalFormat}` },
+                });
+                return;
+            }
+
+            await Video.findByIdAndUpdate(videoId, {
+                $set: {
+                    "assets.video": {
+                        url: transcoded.secure_url,
+                        publicId: public_id,
+                        format: finalFormat,
+                        bytes: transcoded.bytes,
+                    },
+                    ...(duration ? { duration } : {}),
+                },
+            });
+
+            await promoteToReadyIfComplete(videoId);
+            return;
+        }
+
+        if (notification_type === "upload") {
+            if (resource_type === "video") {
+                await Video.findOneAndUpdate(
+                    { _id: videoId, status: "awaiting_upload" },
+                    { $set: { status: "processing" } }
+                );
+                return;
+            }
+
+            if (resource_type === "image") {
+                if (!ALLOWED_IMAGE_FORMATS.has(format)) {
+                    await Video.findByIdAndUpdate(videoId, {
+                        $set: { status: "failed", processingError: `Unsupported thumbnail format: ${format}` },
+                    });
                     return;
                 }
 
-                video.assets.video = {
-                    url: transcoded.secure_url,
-                    publicId: public_id,
-                    format: finalFormat,
-                    bytes: transcoded.bytes,
-                };
-                video.duration = duration || video.duration;
-            } else if (notification_type === "upload") {
-                if (video.status === "awaiting_upload") video.status = "processing";
-            }
-        }
+                await Video.findByIdAndUpdate(videoId, {
+                    $set: { "assets.thumbnail": { url: secure_url, publicId: public_id, format, bytes } },
+                });
 
-        if (resource_type === "image") {
-            if (!ALLOWED_IMAGE_FORMATS.has(format)) {
-                video.status = "failed";
-                video.processingError = `Unsupported thumbnail format: ${format}`;
-                await video.save();
+                await promoteToReadyIfComplete(videoId);
                 return;
             }
-            video.assets.thumbnail = { url: secure_url, publicId: public_id, format, bytes };
         }
 
-        if (video.assets?.video?.url && video.assets?.thumbnail?.url) {
-            video.status = "ready";
-            video.isPublished = true;
-        }
-
-        await video.save();
+        logger.debug({ notification_type, resource_type, videoId }, "Unhandled Cloudinary notification type — ignored");
     } catch (error) {
         logger.error({ err: error, videoId }, "Failed to process Cloudinary webhook");
     }
