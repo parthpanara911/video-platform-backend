@@ -10,7 +10,8 @@ export const buildSignedUploadParams = ({
     eager
 }) => {
     const timestamp = Math.floor(Date.now() / 1000);
-    const publicId = resourceType === "video" ? "source" : "thumbnail";
+    const assetName = resourceType === "video" ? "source" : "thumbnail";
+    const publicId = `videos/${ownerId}/${videoId}/${assetName}`;
 
     const notificationUrl = `${process.env.SERVER_URL}/api/v1/webhooks/cloudinary`;
 
@@ -18,7 +19,7 @@ export const buildSignedUploadParams = ({
         timestamp,
         public_id: publicId,
         upload_preset: uploadPreset,
-        folder: `videos/${ownerId}/${videoId}`,
+        asset_folder: `videos/${ownerId}/${videoId}`,
         context: `videoId=${videoId}|ownerId=${ownerId}`,
         notification_url: notificationUrl,
         ...(eager ? { eager, eager_async: true, eager_notification_url: notificationUrl } : {}),
