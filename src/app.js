@@ -10,6 +10,8 @@ import userRouter from "./routes/user.routes.js";
 import channelRouter from "./routes/channel.routes.js";
 import videoRouter from "./routes/video.routes.js";
 import webhookRouter from "./routes/webhook.routes.js";
+import { serverAdapter } from "./config/bullBoard.js";
+import { bullBoardAuth } from "./middlewares/bullBoardAuth.middleware.js";
 
 const app = express();
 
@@ -28,6 +30,13 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 app.use(httpLogger);
+
+app.use(
+    "/admin/queues",
+    bullBoardAuth,
+    serverAdapter.getRouter()
+);
+
 app.use(generalApiLimiter);
 
 app.use("/api/v1/health", healthRouter);

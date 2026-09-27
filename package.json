@@ -15,6 +15,9 @@
     "nodemon": "^3.1.14"
   },
   "dependencies": {
+    "@bull-board/api": "^9.10.1",
+    "@bull-board/express": "^9.10.1",
+    "basic-auth": "^3.0.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^6.3.7",
     "cloudinary": "^2.10.0",
