@@ -75,7 +75,7 @@ export const handleCloudinaryNotification = asyncHandler(async (req, res) => {
                         format: finalFormat,
                         bytes: transcoded.bytes,
                     },
-                    ...(duration ? { duration } : {}),
+                    ...(typeof duration === "number" && duration > 0 ? { duration } : {}),
                 },
             });
 
@@ -85,6 +85,10 @@ export const handleCloudinaryNotification = asyncHandler(async (req, res) => {
 
         if (notification_type === "upload") {
             if (resource_type === "video") {
+                if (typeof duration === "number" && duration > 0) {
+                    await Video.findByIdAndUpdate(videoId, { $set: { duration } });
+                }
+
                 await Video.findOneAndUpdate(
                     { _id: videoId, status: "awaiting_upload" },
                     { $set: { status: "processing" } }

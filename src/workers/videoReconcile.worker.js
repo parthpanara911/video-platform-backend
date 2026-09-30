@@ -14,13 +14,18 @@ const DEFAULT_STALE_MS = process.env.NODE_ENV === "production"
 const STALE_THRESHOLD_MS = Number(process.env.STALE_THRESHOLD_MS) || DEFAULT_STALE_MS;
 const ALLOWED_VIDEO_FORMATS = new Set(["mp4", "webm", "mov"]);
 
+const toPositiveNumber = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+};
+
 const reconcileOne = async (video) => {
     const videoPublicId = `videos/${video.owner}/${video._id}/source`;
     const thumbnailPublicId = `videos/${video.owner}/${video._id}/thumbnail`;
 
     let videoResource;
     try {
-        videoResource = await cloudinary.api.resource(videoPublicId, { resource_type: "video", derived: true });
+        videoResource = await cloudinary.api.resource(videoPublicId, { resource_type: "video", derived: true, media_metadata: true });
     } catch (err) {
         const httpCode = err?.http_code ?? err?.error?.http_code;
         if (httpCode === 404) {
@@ -32,6 +37,16 @@ const reconcileOne = async (video) => {
         }
         logger.error({ err, videoId: video._id }, "Reconciliation: Cloudinary video lookup failed, will retry next sweep");
         return;
+    }
+
+    const resolvedDuration = toPositiveNumber(videoResource.duration);
+    if (resolvedDuration) {
+        video.duration = resolvedDuration;
+    } else {
+        logger.warn(
+            { videoId: video._id, rawDuration: videoResource.duration },
+            "Reconciliation: no usable duration in Cloudinary resource"
+        );
     }
 
     if (video.status === "awaiting_upload") {
@@ -72,7 +87,7 @@ const reconcileOne = async (video) => {
             }
         } catch (err) {
             const httpCode = err?.http_code ?? err?.error?.http_code;
-            if (httpCode === 404) {
+            if (httpCode !== 404) {
                 logger.error({ err, videoId: video._id }, "Reconciliation: Cloudinary thumbnail lookup failed, will retry next sweep");
             }
         }
