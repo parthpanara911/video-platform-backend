@@ -14,8 +14,10 @@ createBullBoard({
     options: {
         uiConfig: {
             boardTitle: "VideoStream Jobs",
-            pollInterval: 5000,
-        },
+            pollingInterval: {
+                forceInterval: 5
+            }
+        }
     }
 });
 
