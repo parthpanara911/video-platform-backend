@@ -7,10 +7,12 @@ export const buildSignedUploadParams = ({
     ownerId,
     videoId,
     uploadPreset,
-    eager
+    eager,
+    assetName: assetNameOverride,
+    overwrite
 }) => {
     const timestamp = Math.floor(Date.now() / 1000);
-    const assetName = resourceType === "video" ? "source" : "thumbnail";
+    const assetName = assetNameOverride || (resourceType === "video" ? "source" : "thumbnail");
     const publicId = `videos/${ownerId}/${videoId}/${assetName}`;
 
     const notificationUrl = `${process.env.SERVER_URL}/api/v1/webhooks/cloudinary`;
@@ -23,6 +25,7 @@ export const buildSignedUploadParams = ({
         context: `videoId=${videoId}|ownerId=${ownerId}`,
         notification_url: notificationUrl,
         ...(eager ? { eager, eager_async: true, eager_notification_url: notificationUrl } : {}),
+        ...(overwrite !== undefined ? { overwrite: String(overwrite) } : {}),
     };
 
     const signature = cloudinary.utils.api_sign_request(
