@@ -8,6 +8,11 @@ const assetSchema = new Schema({
     bytes: { type: Number },
 }, { _id: false });
 
+const pendingThumbnailSchema = new Schema({
+    publicId: { type: String, required: true },
+    issuedAt: { type: Date, required: true },
+}, { _id: false });
+
 const videoSchema = new Schema({
     title: {
         type: String,
@@ -35,6 +40,11 @@ const videoSchema = new Schema({
         video: assetSchema,
         thumbnail: assetSchema
     },
+    pendingThumbnail: {
+        type: pendingThumbnailSchema,
+        select: false,
+        default: undefined
+    },
     duration: {
         type: Number,
         default: 0
@@ -59,5 +69,10 @@ videoSchema.plugin(mongooseAggregatePaginate);
 
 videoSchema.index({ isPublished: 1, status: 1, createdAt: -1 });
 videoSchema.index({ status: 1, createdAt: 1 });
+
+videoSchema.index(
+    { "pendingThumbnail.issuedAt": 1 },
+    { partialFilterExpression: { "pendingThumbnail.issuedAt": { $exists: true } } }
+);
 
 export const Video = mongoose.model("Video", videoSchema);
