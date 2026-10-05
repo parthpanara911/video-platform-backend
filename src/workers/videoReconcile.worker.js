@@ -5,6 +5,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { redisConnection } from "../queues/connection.js";
 import { Video } from "../models/video.model.js";
 import connectDB from "../config/db.js";
+import { sweepPendingThumbnails } from "./thumbnailReconcile.js";
 import logger from "../utils/logger.js";
 
 const DEFAULT_STALE_MS = process.env.NODE_ENV === "production"
@@ -130,6 +131,12 @@ const runWorker = async () => {
             } catch (err) {
                 logger.error({ err, videoId: video._id }, "Reconciliation: unexpected error processing video");
             }
+        }
+
+        try {
+            await sweepPendingThumbnails();
+        } catch (err) {
+            logger.error({ err }, "Pending thumbnail sweep failed");
         }
 
         logger.info("Reconciliation sweep complete");
