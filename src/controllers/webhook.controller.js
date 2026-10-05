@@ -1,6 +1,8 @@
+import mongoose from "mongoose";
 import { Video } from "../models/video.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import logger from "../utils/logger.js";
+import { processThumbnailNotification } from "../services/video.service.js";
 
 const ALLOWED_VIDEO_FORMATS = new Set(["mp4", "webm", "mov"]);
 const ALLOWED_IMAGE_FORMATS = new Set(["jpg", "jpeg", "png", "webp"]);
@@ -45,7 +47,7 @@ export const handleCloudinaryNotification = asyncHandler(async (req, res) => {
     res.status(200).json({ received: true });
 
     const videoId = extractVideoId(payload);
-    if (!videoId) {
+    if (!videoId || !mongoose.isValidObjectId(videoId)) {
         logger.warn("Cloudinary webhook: could not resolve videoId", { public_id, notification_type });
         return;
     }
@@ -97,6 +99,21 @@ export const handleCloudinaryNotification = asyncHandler(async (req, res) => {
             }
 
             if (resource_type === "image") {
+                // If the video is already ready, handle the thumbnail as a replacement.
+                // Otherwise, return "initial" and continue with the normal initial-upload flow.
+                const outcome = await processThumbnailNotification({
+                    videoId,
+                    publicId: public_id,
+                    secureUrl: secure_url,
+                    format,
+                    bytes,
+                });
+
+                if (outcome !== "initial") {
+                    logger.info({ videoId, public_id, outcome }, "Thumbnail notification handled");
+                    return;
+                }
+
                 if (!ALLOWED_IMAGE_FORMATS.has(format)) {
                     await Video.findByIdAndUpdate(videoId, {
                         $set: { status: "failed", processingError: `Unsupported thumbnail format: ${format}` },
