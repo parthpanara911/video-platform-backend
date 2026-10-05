@@ -4,12 +4,17 @@ import { Video } from "../models/video.model.js";
 import { processThumbnailNotification } from "../services/video.service.js";
 import logger from "../utils/logger.js";
 
+const toPositiveInt = (v, fallback) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+};
+
 // Give the webhook some time to arrive before reconciling.
-const MIN_AGE_MS = 10 * 60 * 1000;
+const MIN_AGE_MS = toPositiveInt(process.env.THUMBNAIL_RECONCILE_MIN_AGE_MS, 10 * 60 * 1000);
 
 // Give the upload enough time to complete before clearing the pending record.
-const EXPIRY_MS = 70 * 60 * 1000;
-const BATCH = 10;
+const EXPIRY_MS = toPositiveInt(process.env.THUMBNAIL_PENDING_EXPIRY_MS, 70 * 60 * 1000);
+const BATCH = toPositiveInt(process.env.THUMBNAIL_RECONCILE_BATCH, 10);
 
 export const sweepPendingThumbnails = async () => {
     const now = Date.now();
