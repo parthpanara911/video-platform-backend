@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "worker": "nodemon src/workers/videoReconcile.worker.js"
+    "worker:reconcile": "nodemon src/workers/videoReconcile.worker.js",
+    "worker:cleanup": "nodemon src/workers/assetCleanup.worker.js"
   },
   "author": "Parth Panara",
   "license": "ISC",
