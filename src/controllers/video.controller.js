@@ -6,7 +6,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { buildSignedUploadParams } from "../utils/cloudinarySignature.js";
 import { deleteFromCloudinary } from "../utils/cloudinaryService.js";
-import { validateImageFile } from "../utils/validateFile.js";
+import { updateVideoMetadata, issueThumbnailUpload as issueThumbnailUploadService } from "../services/video.service.js";
 
 const MAX_CONCURRENT_UPLOADS_PER_USER = 3;
 
@@ -61,14 +61,23 @@ const getVideoStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
     if (!mongoose.isValidObjectId(videoId)) throw new ApiError(400, "Invalid video id");
 
-    const video = await Video.findById(videoId).select("status processingError title isPublished owner");
+    const video = await Video.findById(videoId)
+        .select("status processingError title isPublished owner assets.thumbnail.url +pendingThumbnail")
+        .lean();
     if (!video) throw new ApiError(404, "Video not found");
 
     if (video.owner.toString() !== req.user._id.toString()) {
         throw new ApiError(403, "You are not authorized to view this video's status");
     }
 
-    return res.status(200).json(new ApiResponse(200, video, "Status retrieved"));
+    const { pendingThumbnail, assets, ...rest } = video;
+    const payload = {
+        ...rest,
+        thumbnailUrl: assets?.thumbnail?.url ?? null,
+        thumbnailPending: Boolean(pendingThumbnail?.publicId),
+    };
+
+    return res.status(200).json(new ApiResponse(200, payload, "Status retrieved"));
 });
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -136,6 +145,9 @@ const getAllVideos = asyncHandler(async (req, res) => {
             }
         },
         {
+            $project: { pendingThumbnail: 0 }
+        },
+        {
             $sort: {
                 [sortField]: sortOrder
             }
@@ -195,6 +207,9 @@ const getVideoById = asyncHandler(async (req, res) => {
                 }
             }
         },
+        {
+            $project: { pendingThumbnail: 0 }
+        },
     ]);
 
     if (!video) {
@@ -227,52 +242,25 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
     const { title, description } = req.body;
 
-    if (!mongoose.isValidObjectId(videoId)) {
-        throw new ApiError(400, "Invalid video id");
-    }
-
-    const video = await Video.findById(videoId);
-    if (!video) {
-        throw new ApiError(404, "Video not found");
-    }
-
-    if (video.owner.toString() !== req.user._id.toString()) {
-        throw new ApiError(403, "You are not authorized to update this video");
-    }
-
-    if (video.status !== "ready") {
-        throw new ApiError(409, "Video is still processing");
-    }
-
-    if (title?.trim()) video.title = title.trim();
-    if (description?.trim()) video.description = description.trim();
-
-    const newThumbnailPath = req.file?.path;
-    let oldThumbnailPublicId = null;
-
-    if (newThumbnailPath) {
-        await validateImageFile(newThumbnailPath, "Thumbnail");
-
-        const uploadedThumbnail = await uploadOnCloudinary(newThumbnailPath);
-        if (!uploadedThumbnail?.secure_url || !uploadedThumbnail?.public_id) {
-            throw new ApiError(500, "Failed to upload the new thumbnail");
-        }
-
-        oldThumbnailPublicId = video.assets.thumbnail.publicId;
-        video.assets.thumbnail.url = uploadedThumbnail.secure_url;
-        video.assets.thumbnail.publicId = uploadedThumbnail.public_id;
-    }
-
-    await video.save();
-
-    if (oldThumbnailPublicId) {
-        deleteFromCloudinary(oldThumbnailPublicId, "image").catch((error) => {
-            console.error(`Failed to delete old thumbnail: ${oldThumbnailPublicId}`, error);
-        });
-    }
+    const video = await updateVideoMetadata({
+        videoId,
+        userId: req.user._id,
+        title,
+        description,
+    });
 
     return res.status(200)
         .json(new ApiResponse(200, video, "Video updated successfully"));
+});
+
+const issueThumbnailUpload = asyncHandler(async (req, res) => {
+    const data = await issueThumbnailUploadService({
+        videoId: req.params.videoId,
+        userId: req.user._id,
+    });
+
+    return res.status(200)
+        .json(new ApiResponse(200, data, "Thumbnail upload authorized"));
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
@@ -334,4 +322,4 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, video, `Video ${video.isPublished ? "published" : "unpublished"} successfully`));
 });
 
-export { initiateVideoUpload, getVideoStatus, getAllVideos, getVideoById, updateVideoDetails, deleteVideo, togglePublishStatus };
+export { initiateVideoUpload, getVideoStatus, getAllVideos, getVideoById, updateVideoDetails, issueThumbnailUpload, deleteVideo, togglePublishStatus };
