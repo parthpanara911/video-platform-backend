@@ -64,6 +64,13 @@ export const uploadInitiateLimiter = makeLimiter({
     message: "Too many upload attempts, please slow down."
 });
 
+export const thumbnailSignLimiter = makeLimiter({
+    windowMs: 10 * 60 * 1000,
+    max: 5,
+    keyGenerator: (req) => `user:${req.user._id.toString()}`,
+    message: "Too many thumbnail upload requests, please slow down."
+});
+
 // --- Global fallback, applied at app level ---
 export const generalApiLimiter = makeLimiter({
     windowMs: 60 * 1000,

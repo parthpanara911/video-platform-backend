@@ -2,7 +2,7 @@ import { Router } from "express";
 import { initiateVideoUpload, getVideoStatus, getAllVideos, getVideoById, updateVideoDetails, issueThumbnailUpload, deleteVideo, togglePublishStatus } from "../controllers/video.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { optionalAuth } from "../middlewares/optionalAuth.middleware.js";
-import { uploadInitiateLimiter } from "../middlewares/rateLimiter.middleware.js";
+import { uploadInitiateLimiter, thumbnailSignLimiter } from "../middlewares/rateLimiter.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import { videoIdParamsSchema, updateVideoMetadataSchema } from "../validators/video.validator.js";
 
@@ -16,6 +16,7 @@ router.route("/:videoId/status").get(verifyJWT, getVideoStatus);
 
 router.route("/:videoId/thumbnail/upload-url").post(
     verifyJWT,
+    thumbnailSignLimiter,
     validate({ params: videoIdParamsSchema }),
     issueThumbnailUpload
 );
