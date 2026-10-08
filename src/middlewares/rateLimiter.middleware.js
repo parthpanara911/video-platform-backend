@@ -2,7 +2,7 @@ import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { RedisStore } from "rate-limit-redis";
 import redisClient from "../config/redisClient.js";
 
-const makeLimiter = ({ windowMs, max, keyGenerator, message }) =>
+const makeLimiter = ({ name, windowMs, max, keyGenerator, message }) =>
     rateLimit({
         windowMs,
         max,
@@ -10,6 +10,7 @@ const makeLimiter = ({ windowMs, max, keyGenerator, message }) =>
         legacyHeaders: false,
         keyGenerator,
         store: new RedisStore({
+            prefix: `rl:${name}:`,
             sendCommand: (...args) => redisClient.call(...args),
         }),
         handler: (req, res) => {
@@ -20,6 +21,7 @@ const makeLimiter = ({ windowMs, max, keyGenerator, message }) =>
 
 // --- Auth: unauthenticated, IP-keyed ---
 export const registerLimiter = makeLimiter({
+    name: "register",
     windowMs: 60 * 60 * 1000,
     max: 5,
     keyGenerator: (req) => {
@@ -30,6 +32,7 @@ export const registerLimiter = makeLimiter({
 });
 
 export const loginLimiter = makeLimiter({
+    name: "login",
     windowMs: 15 * 60 * 1000,
     max: 10,
     keyGenerator: (req) => {
@@ -40,6 +43,7 @@ export const loginLimiter = makeLimiter({
 });
 
 export const refreshLimiter = makeLimiter({
+    name: "refresh",
     windowMs: 15 * 60 * 1000,
     max: 20,
     keyGenerator: (req) => {
@@ -51,6 +55,7 @@ export const refreshLimiter = makeLimiter({
 
 // --- Authenticated, user-keyed ---
 export const passwordChangeLimiter = makeLimiter({
+    name: "passwordChange",
     windowMs: 15 * 60 * 1000,
     max: 5,
     keyGenerator: (req) => `user:${req.user._id.toString()}`,
@@ -58,6 +63,7 @@ export const passwordChangeLimiter = makeLimiter({
 });
 
 export const uploadInitiateLimiter = makeLimiter({
+    name: "uploadInitiate",
     windowMs: 10 * 60 * 1000,
     max: 5,
     keyGenerator: (req) => `user:${req.user._id.toString()}`,
@@ -65,6 +71,7 @@ export const uploadInitiateLimiter = makeLimiter({
 });
 
 export const thumbnailSignLimiter = makeLimiter({
+    name: "thumbnailSign",
     windowMs: 10 * 60 * 1000,
     max: 5,
     keyGenerator: (req) => `user:${req.user._id.toString()}`,
@@ -73,6 +80,7 @@ export const thumbnailSignLimiter = makeLimiter({
 
 // --- Global fallback, applied at app level ---
 export const generalApiLimiter = makeLimiter({
+    name: "general",
     windowMs: 60 * 1000,
     max: 100,
     keyGenerator: (req) => {
