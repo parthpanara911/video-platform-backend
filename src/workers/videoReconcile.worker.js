@@ -6,6 +6,7 @@ import { redisConnection } from "../queues/connection.js";
 import { Video } from "../models/video.model.js";
 import connectDB from "../config/db.js";
 import { sweepPendingThumbnails } from "./thumbnailReconcile.js";
+import { scheduleReconciliation } from "../queues/videoReconcile.queue.js";
 import logger from "../utils/logger.js";
 
 const DEFAULT_STALE_MS = process.env.NODE_ENV === "production"
@@ -153,6 +154,16 @@ const runWorker = async () => {
     worker.on("error", (err) => {
         logger.error({ err }, "Reconciliation worker error");
     });
+
+    await scheduleReconciliation(Number(process.env.RECONCILE_INTERVAL_MS) || 15 * 60 * 1000);
+
+    const shutdown = async (signal) => {
+        logger.info({ signal }, "Shutting down video reconcile worker");
+        await worker.close();
+        process.exit(0);
+    };
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
 
     logger.info("Video reconciliation worker started");
     return worker;
