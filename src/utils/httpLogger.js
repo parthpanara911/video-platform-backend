@@ -26,7 +26,9 @@ const httpLogger = pinoHttp({
         }),
     },
     autoLogging: {
-        ignore: (req) => req.url === "/api/v1/health",
+        ignore: (req) =>
+            req.url === "/api/v1/health" ||
+            req.url.startsWith("/admin/queues"),
     },
 });
 
