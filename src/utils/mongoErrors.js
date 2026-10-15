@@ -1,0 +1,1 @@
+export const isDuplicateKeyError = (err) => err?.code === 11000;
