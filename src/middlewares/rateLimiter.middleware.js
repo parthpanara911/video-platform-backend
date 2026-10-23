@@ -78,6 +78,22 @@ export const thumbnailSignLimiter = makeLimiter({
     message: "Too many thumbnail upload requests, please slow down."
 });
 
+export const engagementLimiter = makeLimiter({
+    name: "engagement",
+    windowMs: 60 * 1000,
+    max: 60,
+    keyGenerator: (req) => `user:${req.user._id.toString()}`,
+    message: "Too many actions, please slow down."
+});
+
+export const commentWriteLimiter = makeLimiter({
+    name: "commentWrite",
+    windowMs: 60 * 1000,
+    max: 20,
+    keyGenerator: (req) => `user:${req.user._id.toString()}`,
+    message: "Too many comment actions, please slow down."
+});
+
 // --- Global fallback, applied at app level ---
 export const generalApiLimiter = makeLimiter({
     name: "general",
