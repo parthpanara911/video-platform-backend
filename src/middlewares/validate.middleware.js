@@ -1,7 +1,7 @@
 import ApiError from "../utils/ApiError.js";
 
 export const validate = (schemas) => (req, res, next) => {
-    for (const key of ["params", "body"]) {
+    for (const key of ["params", "body", "query"]) {
         const schema = schemas[key];
         if (!schema) continue;
 
@@ -13,7 +13,8 @@ export const validate = (schemas) => (req, res, next) => {
             }));
             return next(new ApiError(400, errors[0]?.message || "Validation failed", errors));
         }
-        req[key] = result.data;
+        if (key === "query") req.validatedQuery = result.data;
+        else req[key] = result.data;
     }
     next();
 };
