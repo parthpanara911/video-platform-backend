@@ -19,4 +19,7 @@ subscriptionSchema.index(
     { unique: true }
 );
 
+subscriptionSchema.index({ channel: 1, createdAt: -1, _id: -1 });
+subscriptionSchema.index({ subscriber: 1, createdAt: -1, _id: -1 });
+
 export const Subscription = mongoose.model('Subscription', subscriptionSchema);
