@@ -70,6 +70,8 @@ videoSchema.plugin(mongooseAggregatePaginate);
 videoSchema.index({ isPublished: 1, status: 1, createdAt: -1 });
 videoSchema.index({ status: 1, createdAt: 1 });
 
+videoSchema.index({ owner: 1, createdAt: -1, _id: -1 });
+
 videoSchema.index(
     { "pendingThumbnail.issuedAt": 1 },
     { partialFilterExpression: { "pendingThumbnail.issuedAt": { $exists: true } } }
