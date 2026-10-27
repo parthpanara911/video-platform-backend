@@ -9,6 +9,7 @@ import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
 import channelRouter from "./routes/channel.routes.js";
 import videoRouter from "./routes/video.routes.js";
+import subscriptionRouter from "./routes/subscription.routes.js";
 import webhookRouter from "./routes/webhook.routes.js";
 import { serverAdapter } from "./config/bullBoard.js";
 import { bullBoardAuth } from "./middlewares/bullBoardAuth.middleware.js";
@@ -44,6 +45,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/channels", channelRouter);
 app.use("/api/v1/videos", videoRouter);
+app.use("/api/v1/subscriptions", subscriptionRouter);
 
 app.use(errorHandler);
 
