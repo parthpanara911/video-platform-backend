@@ -160,6 +160,14 @@ export const createComment = async ({ videoId, author, content, parentCommentId 
 
     if (!videoStillExists || !parentStillExists) {
         await Comment.deleteOne({ _id: comment._id });
+
+        // if the parent is a deleted placeholder with no replies left, remove it
+        if (parentCommentId) {
+            await garbageCollectDeletedParent(parentCommentId).catch((err) =>
+                logger.warn({ err, parentCommentId }, "Placeholder cleanup after rollback failed")
+            );
+        }
+
         throw new ApiError(404, !videoStillExists ? "Video not found" : "Parent comment not found");
     }
 
