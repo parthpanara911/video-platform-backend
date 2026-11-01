@@ -4,6 +4,8 @@ import { User } from "../models/user.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
+import logger from "../utils/logger.js";
+import { cleanupVideoReferences } from "../services/videoCleanup.service.js";
 import { buildSignedUploadParams } from "../utils/cloudinarySignature.js";
 import { deleteFromCloudinary } from "../utils/cloudinaryService.js";
 import { updateVideoMetadata, issueThumbnailUpload as issueThumbnailUploadService } from "../services/video.service.js";
@@ -280,6 +282,12 @@ const deleteVideo = asyncHandler(async (req, res) => {
     }
 
     await Video.findByIdAndDelete(videoId);
+
+    try {
+        await cleanupVideoReferences(videoId);
+    } catch (err) {
+        logger.error({ err, videoId }, "Video reference cleanup failed");
+    }
 
     const cleanupTasks = [];
 
