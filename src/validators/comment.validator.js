@@ -14,9 +14,9 @@ export const commentIdParamsSchema = z.object({ commentId: objectId("comment id"
 
 export const createCommentBodySchema = z.object({
     content,
-    parentComment: objectId("parent comment id").nullish(),
-});
+    parentCommentId: objectId("parent comment id").nullish(),
+}).strict();
 
-export const updateCommentBodySchema = z.object({ content });
+export const updateCommentBodySchema = z.object({ content }).strict();
 
 export const commentListQuerySchema = paginationQuerySchema;

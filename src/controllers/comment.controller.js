@@ -25,7 +25,7 @@ export const addComment = asyncHandler(async (req, res) => {
         videoId: req.params.videoId,
         author: req.user,
         content: req.body.content,
-        parentCommentId: req.body.parentComment,
+        parentCommentId: req.body.parentCommentId,
     });
     return res.status(201).json(new ApiResponse(201, data, "Comment added successfully"));
 });
