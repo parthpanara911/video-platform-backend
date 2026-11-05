@@ -19,6 +19,7 @@ const visibility = z.enum(PLAYLIST_VISIBILITY, {
 });
 
 export const playlistIdParamsSchema = z.object({ playlistId: objectId("playlist id") });
+
 export const playlistVideoParamsSchema = z.object({
     playlistId: objectId("playlist id"),
     videoId: objectId("video id"),
@@ -28,7 +29,7 @@ export const createPlaylistBodySchema = z.object({
     name,
     description: description.default(""),
     visibility: visibility.default("private"),
-});
+}).strict();
 
 export const updatePlaylistBodySchema = z
     .object({
@@ -39,7 +40,8 @@ export const updatePlaylistBodySchema = z
     .refine(
         (d) => d.name !== undefined || d.description !== undefined || d.visibility !== undefined,
         { message: "Provide at least one of name, description or visibility" }
-    );
+    )
+    .strict();
 
 export const playlistListQuerySchema = z.object({
     ...paginationShape,
