@@ -9,10 +9,12 @@ export const dashboardVideosQuerySchema = z.object({
     state: z.enum(DASHBOARD_VIDEO_STATES, {
         errorMap: () => ({ message: `state must be one of: ${DASHBOARD_VIDEO_STATES.join(", ")}` }),
     }).optional(),
+
     sortBy: z.enum(DASHBOARD_SORT_FIELDS, {
         errorMap: () => ({ message: `sortBy must be one of: ${DASHBOARD_SORT_FIELDS.join(", ")}` }),
     }).default("createdAt"),
+
     sortType: z.enum(["asc", "desc"], {
         errorMap: () => ({ message: "sortType must be asc or desc" }),
     }).default("desc"),
-});
+}).strict();
