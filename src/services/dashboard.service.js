@@ -110,14 +110,19 @@ export const listCreatorVideos = async ({ creatorId, page, limit, state, sortBy,
         ? { createdAt: sortDirection, _id: sortDirection }
         : { [sortBy]: sortDirection, _id: -1 };
 
-    const [videos, totalVideos] = await Promise.all([
-        Video.find(videoFilter)
-            .sort(sortOptions)
-            .skip(skipFor(page, limit))
-            .limit(limit)
-            .select("title description status processingError isPublished views duration assets.thumbnail.url createdAt updatedAt")
-            .lean(),
+    let videosQuery = Video.find(videoFilter)
+        .sort(sortOptions)
+        .skip(skipFor(page, limit))
+        .limit(limit)
+        .select("title status processingError isPublished views duration assets.thumbnail.url createdAt updatedAt")
+        .lean();
 
+    if (sortBy === "title") {
+        videosQuery = videosQuery.collation({ locale: "en", strength: 2, numericOrdering: true });
+    }
+
+    const [videos, totalVideos] = await Promise.all([
+        videosQuery,
         Video.countDocuments(videoFilter),
     ]);
 
