@@ -218,9 +218,13 @@ const getVideoById = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Video not found");
     }
 
-    const sideEffects = [
-        Video.findByIdAndUpdate(videoId, { $inc: { views: 1 } }),
-    ];
+    const isOwner = Boolean(req.user) && video.owner?._id?.toString() === req.user._id.toString();
+
+    const sideEffects = [];
+
+    if (!isOwner) {
+        sideEffects.push(Video.updateOne({ _id: videoId }, { $inc: { views: 1 } }));
+    }
 
     if (req.user) {
         sideEffects.push(
