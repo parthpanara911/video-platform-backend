@@ -1,5 +1,6 @@
 import { Comment } from "../models/comment.model.js";
 import { Like } from "../models/like.model.js";
+import { VideoView } from "../models/videoView.model.js";
 import { Playlist } from "../models/playlist.model.js";
 import { toObjectId } from "../utils/objectId.js";
 
@@ -57,6 +58,8 @@ export const cleanupVideoReferences = async (videoId) => {
             targetId: id
         })
     );
+
+    await step("video-views", () => VideoView.deleteMany({ video: id }));
 
     await step("playlists", () =>
         Playlist.updateMany(
