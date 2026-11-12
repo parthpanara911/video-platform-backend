@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import { Video } from "../models/video.model.js";
-import { User } from "../models/user.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -9,6 +8,8 @@ import { cleanupVideoReferences } from "../services/videoCleanup.service.js";
 import { buildSignedUploadParams } from "../utils/cloudinarySignature.js";
 import { deleteFromCloudinary } from "../utils/cloudinaryService.js";
 import { updateVideoMetadata, issueThumbnailUpload as issueThumbnailUploadService } from "../services/video.service.js";
+import { registerView, touchWatchHistory } from "../services/videoView.service.js";
+import { assertVideoVisible } from "../services/videoAccess.service.js";
 
 const MAX_CONCURRENT_UPLOADS_PER_USER = 3;
 
@@ -218,28 +219,6 @@ const getVideoById = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Video not found");
     }
 
-    const isOwner = Boolean(req.user) && video.owner?._id?.toString() === req.user._id.toString();
-
-    const sideEffects = [];
-
-    if (!isOwner) {
-        sideEffects.push(Video.updateOne({ _id: videoId }, { $inc: { views: 1 } }));
-    }
-
-    if (req.user) {
-        sideEffects.push(
-            User.findByIdAndUpdate(req.user._id, {
-                $pull: { watchHistory: video._id }
-            }).then(() =>
-                User.findByIdAndUpdate(req.user._id, {
-                    $push: { watchHistory: { $each: [video._id], $position: 0 } }
-                })
-            )
-        );
-    }
-
-    await Promise.all(sideEffects);
-
     return res.status(200)
         .json(new ApiResponse(200, video, "Video retrieved successfully"));
 });
@@ -334,4 +313,29 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, video, `Video ${video.isPublished ? "published" : "unpublished"} successfully`));
 });
 
-export { initiateVideoUpload, getVideoStatus, getAllVideos, getVideoById, updateVideoDetails, issueThumbnailUpload, deleteVideo, togglePublishStatus };
+const recordVideoView = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+    const viewerId = req.user?._id;
+
+    const video = await assertVideoVisible(videoId, viewerId);
+
+    const isOwner = Boolean(viewerId) && video.owner.toString() === viewerId.toString();
+
+    let counted = false;
+    if (!isOwner) {
+        counted = await registerView({
+            videoId,
+            viewerId,
+            ip: req.ip,
+            userAgent: req.get("user-agent"),
+        });
+    }
+
+    if (viewerId) {
+        await touchWatchHistory({ userId: viewerId, videoId });
+    }
+
+    return res.status(200).json(new ApiResponse(200, { counted }, "View recorded"));
+});
+
+export { initiateVideoUpload, getVideoStatus, getAllVideos, getVideoById, updateVideoDetails, issueThumbnailUpload, deleteVideo, togglePublishStatus, recordVideoView };
