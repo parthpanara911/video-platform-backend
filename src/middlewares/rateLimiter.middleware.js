@@ -94,6 +94,20 @@ export const commentWriteLimiter = makeLimiter({
     message: "Too many comment actions, please slow down."
 });
 
+export const viewLimiter = makeLimiter({
+    name: "view",
+    windowMs: 60 * 1000,
+    max: 30,
+    keyGenerator: (req) => {
+        const userId = req.user?._id?.toString();
+        if (userId) return `user:${userId}`;
+
+        const ip = req.ip ?? req.socket?.remoteAddress;
+        return ip ? `ip:${ipKeyGenerator(ip)}` : "unknown";
+    },
+    message: "Too many view requests, please slow down."
+});
+
 // --- Global fallback, applied at app level ---
 export const generalApiLimiter = makeLimiter({
     name: "general",
