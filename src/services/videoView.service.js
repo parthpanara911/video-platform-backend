@@ -92,7 +92,9 @@ export const touchWatchHistory = async ({ userId, videoId }) => {
                     },
                 },
             },
-        ]);
+        ],
+            { updatePipeline: true }
+        );
     } catch (err) {
         logger.warn({ err, userId, videoId }, "Failed to update watch history");
     }
