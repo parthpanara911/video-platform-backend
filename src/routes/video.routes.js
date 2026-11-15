@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { initiateVideoUpload, getVideoStatus, getAllVideos, getVideoById, updateVideoDetails, issueThumbnailUpload, deleteVideo, togglePublishStatus } from "../controllers/video.controller.js";
+import { initiateVideoUpload, getVideoStatus, getAllVideos, getVideoById, updateVideoDetails, issueThumbnailUpload, deleteVideo, togglePublishStatus, recordVideoView } from "../controllers/video.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { optionalAuth } from "../middlewares/optionalAuth.middleware.js";
-import { uploadInitiateLimiter, thumbnailSignLimiter } from "../middlewares/rateLimiter.middleware.js";
+import { uploadInitiateLimiter, thumbnailSignLimiter, viewLimiter } from "../middlewares/rateLimiter.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import { videoIdParamsSchema, updateVideoMetadataSchema } from "../validators/video.validator.js";
 
@@ -31,5 +31,12 @@ router.route("/:videoId")
     .delete(verifyJWT, deleteVideo);
 
 router.route("/:videoId/toggle-publish").patch(verifyJWT, togglePublishStatus);
+
+router.route("/:videoId/view").post(
+    optionalAuth,
+    viewLimiter,
+    validate({ params: videoIdParamsSchema }),
+    recordVideoView
+);
 
 export default router;
