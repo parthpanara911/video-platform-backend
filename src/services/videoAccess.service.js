@@ -38,8 +38,6 @@ export const getVideoCardsInOrder = async (videoIds, viewerId) => {
                 duration: 1,
                 views: 1,
                 owner: 1,
-                status: 1,
-                isPublished: 1,
                 createdAt: 1,
                 thumbnail: "$assets.thumbnail.url",
             },

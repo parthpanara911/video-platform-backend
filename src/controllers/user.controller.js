@@ -4,7 +4,7 @@ import ApiError from "../utils/ApiError.js";
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinaryService.js";
 import { validateImageFile } from "../utils/validateFile.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import mongoose from "mongoose";
+import { getVideoCardsInOrder } from "../services/videoAccess.service.js";
 
 const getCurrentUser = asyncHandler(async (req, res) => {
     return res.status(200)
@@ -247,64 +247,16 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 });
 
 const getWatchHistory = asyncHandler(async (req, res) => {
-    const [user] = await User.aggregate([
-        {
-            $match: {
-                _id: new mongoose.Types.ObjectId(req.user?._id)
-            }
-        },
-        {
-            $lookup: {
-                from: "videos",
-                localField: "watchHistory",
-                foreignField: "_id",
-                as: "watchHistory",
-                pipeline: [
-                    {
-                        $lookup: {
-                            from: "users",
-                            localField: "owner",
-                            foreignField: "_id",
-                            as: "owner",
-                            pipeline: [
-                                {
-                                    $project: {
-                                        fullName: 1,
-                                        username: 1,
-                                        avatar: 1
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        $addFields: {
-                            owner: {
-                                $first: "$owner"
-                            }
-                        }
-                    },
-                    {
-                        $project: {
-                            thumbnail: 1,
-                            title: 1,
-                            duration: 1,
-                            views: 1,
-                            owner: 1,
-                            createdAt: 1,
-                        }
-                    }
-                ]
-            }
-        }
-    ]);
+    const user = await User.findById(req.user._id).select("watchHistory").lean();
 
     if (!user) {
         throw new ApiError(404, "User not found");
     }
 
+    const videos = await getVideoCardsInOrder(user.watchHistory, req.user._id);
+
     return res.status(200)
-        .json(new ApiResponse(200, user.watchHistory, "Watch history retrieved successfully"));
+        .json(new ApiResponse(200, videos, "Watch history retrieved successfully"));
 });
 
 export { getCurrentUser, updateAccountDetails, changeCurrentPassword, updateAvatar, updateCoverImage, getUserChannelProfile, getWatchHistory };
